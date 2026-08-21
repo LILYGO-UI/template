@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "@LILYGO_UI_APP_ID@",
+  "name": "@LILYGO_UI_APP_NAME@",
+  "description": "@LILYGO_UI_APP_DESCRIPTION@",
+  "icon": "../../icons/hicolor/128x128/apps/@LILYGO_UI_APP_ID@.png",
+  "order": @LILYGO_UI_APP_ORDER@,
+  "executable": "../../../@CMAKE_INSTALL_BINDIR@/@LILYGO_UI_EXECUTABLE_NAME@"
+}
+
