@@ -68,6 +68,7 @@ include the required font license notices in distributions.
 - C and C++17 compilers (the application template is C++; LVGL includes C)
 - `pkg-config`
 - SDL2 for host simulation
+- `clang-format` for automatic formatting before commits
 - Git submodules initialized
 - LPM installed and available as `lpm` (CMake uses it to read `lpm.toml`)
 - An AArch64 cross compiler for device builds
@@ -79,6 +80,20 @@ submodules, or initialize it in an existing checkout:
 git clone --recurse-submodules https://github.com/LILYGO-UI/template.git
 git submodule update --init --recursive
 ```
+
+## Code formatting
+
+C and C++ sources use the checked-in `.clang-format` configuration. After
+cloning, enable the repository's pre-commit hook:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+Each commit then formats and restages its staged C/C++ files while excluding
+`third_party/`. If a staged file also has unstaged changes, the hook stops the
+commit so those changes are not included accidentally; stage or stash the
+remaining changes before committing again.
 
 ## Host simulator
 
