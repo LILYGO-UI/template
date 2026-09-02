@@ -1,5 +1,7 @@
+/.cache/
+/.lpm/
+/.venv/
 /build/
 /dist/
-/.cache/
+/publish.json
 .DS_Store
-

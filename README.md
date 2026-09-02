@@ -3,7 +3,7 @@
 This is a complete, independent starter project for applications built with
 LILYGO UI AppKit. The checked-in example is a small responsive counter named
 `Template`; it demonstrates application identity, AppKit lifecycle, a
-testable state model, LVGL event binding, phone/desktop mode resolution,
+testable C++ MVVM structure, reactive LVGL binding, responsive layout,
 Launcher discovery, desktop metadata, and Debian packaging.
 
 The project does not use Launcher source code and does not vendor AppKit. It
@@ -17,15 +17,20 @@ find_package(LilyGoUI CONFIG REQUIRED)
 
 1. Copy this repository into a repository named after the final Debian
    package, for example `lilygo-ui-file-manager`.
-2. Edit `cmake/AppIdentity.cmake`. Use a lowercase kebab-case component slug
-   and a PascalCase component name, such as `file-manager` and `FileManager`.
-3. Replace `assets/app-icon.svg` and regenerate `assets/app-icon.png` at
-   128x128 pixels.
-4. Replace the example model and UI under `src/`, then update the tests.
-5. Choose the real project license and update `project_license` in
-   `data/application.metainfo.xml.in`.
+2. Edit `[project]` in `lpm.toml`. Set the package to a lowercase kebab-case
+   `lilygo-ui-<component>` name and the application ID to
+   `cc.lilygo.ui.<PascalCase>`, such as `lilygo-ui-file-manager` and
+   `cc.lilygo.ui.FileManager`.
+3. Replace `assets/app-icon.png` with a 128x128-pixel RGBA image.
+4. Read and follow the [LILYGO UI development guidelines](docs/01-UI.md),
+   then replace the example page under `src/pages/counter/` and its
+   corresponding tests.
+5. Set the real version, description, license, categories, compatibility,
+   permissions, repository URLs, and preview assets in `lpm.toml`.
 
-The identity file derives all stable public names:
+`lpm.toml` is the single developer-maintained source for application identity,
+release metadata, build presets, and deployment defaults. CMake validates it
+through LPM and derives all generated metadata and package settings from it:
 
 ```text
 Package/executable: lilygo-ui-<component>
@@ -36,13 +41,35 @@ Desktop/AppStream:  cc.lilygo.ui.<Component>
 Do not publish with the default `template` identity. Published package names
 and application IDs are stable interfaces.
 
+The Launcher, desktop, and AppStream files under `data/` are output templates
+and must not contain application-specific values. `publish.json` is ignored by
+Git because it is a temporary publishing artifact. Generate it when needed:
+
+```sh
+lpm metadata --format publish-json --output publish.json
+```
+
+The generated JSON contains only public publish metadata; `[build]` and
+`[deploy]` are excluded. A future `lpm publish` will perform the same conversion
+internally before upload.
+
+## Design requirements
+
+The [LILYGO UI development guidelines](docs/01-UI.md) define the architecture,
+design, implementation, and verification requirements for derived applications.
+Derived applications must follow them when adding or changing UI. In
+particular, use AppKit's composite fonts, build responsive LVGL
+Flex or Grid layouts, verify every supported viewport and orientation, and
+include the required font license notices in distributions.
+
 ## Requirements
 
 - CMake 3.21 or newer
-- A C and C++ compiler
+- C and C++17 compilers (the application template is C++; LVGL includes C)
 - `pkg-config`
 - SDL2 for host simulation
 - Git submodules initialized
+- LPM installed and available as `lpm` (CMake uses it to read `lpm.toml`)
 - An AArch64 cross compiler for device builds
 
 AppKit is pinned as the `third_party/cm0-appkit` Git submodule. Clone with
@@ -60,11 +87,12 @@ git submodule update --init --recursive
 cmake --preset host-simulator
 cmake --build --preset host-simulator --parallel
 ctest --preset host-simulator
-./build/host-simulator/lilygo-ui-template --mode=auto
+lpm start --no-build --foreground
 ```
 
-The test suite covers the state model and mode parser, then renders compact,
-phone, landscape, and desktop snapshots under `build/host-simulator/`.
+The test suite covers the model and ViewModel independently, verifies reactive
+button-to-label binding, then renders portrait and landscape snapshots under
+`build/host-simulator/`.
 
 ## Device build and package
 
@@ -80,36 +108,35 @@ cmake --build --preset cm0-cross --parallel
 cpack --config build/cm0-cross/CPackConfig.cmake -B dist
 ```
 
-The package installs the executable, Launcher manifest, 128x128 and scalable
-icons, desktop file, AppStream metadata, system mode default, and AppKit font
-license notices. New applications intentionally do not declare legacy CM0
-package migration relationships.
+The package installs the executable, Launcher manifest, 128x128 icon, desktop
+file, AppStream metadata, and AppKit font license notices. New applications
+intentionally do not declare legacy CM0 package migration relationships.
 
-## Presentation mode
-
-The executable accepts `--mode=auto`, `--mode=phone`, and `--mode=desktop`.
-Resolution order is command line, per-user configuration, system
-configuration, then automatic detection. Configuration uses:
-
-```ini
-ui.mode=auto
-```
-
-The per-user path is
-`$XDG_CONFIG_HOME/lilygo/ui/<component>.conf` (or
-`$HOME/.config/lilygo/ui/<component>.conf`); the system path is
-`/etc/lilygo/ui/<component>.conf`. Automatic mode detection considers display
-geometry, pointer availability, and desktop-session capability, never CPU
-architecture.
+The application has no presentation mode option. Its LVGL layout responds to
+the actual container geometry and is reapplied when that geometry changes.
 
 ## Source boundaries
 
-- `src/app.c`: LVGL view, controller events, and AppKit descriptor
-- `src/app_model.c`: application state independent of LVGL
-- `src/app_mode.c`: mode parsing, configuration, and automatic detection
-- `src/main.c`: application-specific options followed by AppKit runtime
-- `data/`: Launcher, desktop, AppStream, and system configuration metadata
-- `tests/`: model checks and headless responsive render tests
+- `src/app.cpp`: AppKit lifecycle and construction of the initial page
+- `src/pages/<page>/<page>_model.cpp`: page state and domain rules independent of LVGL
+- `src/pages/<page>/<page>_view_model.cpp`: presentation state and commands
+- `src/pages/<page>/<page>_view.cpp`: LVGL widget creation and binding only
+- `src/domain/`: optional domain objects shared by multiple pages
+- `src/components/`: reusable widgets and LVGL Subject RAII helpers
+- `src/main.cpp`: AppKit runtime entry point
+- `data/`: Launcher, desktop, and AppStream metadata
+- `tests/`: model, ViewModel, binding, and headless responsive render tests
 
-Keep backend and domain logic out of the View so it can be tested without a
-display. Use AppKit's `CM0_FONT_UI_*` typography tokens for all LVGL text.
+Each page lives in its own directory under `src/pages/`, with its private
+Model, ViewModel, and View kept together. Keep Model code independent of LVGL,
+transform it into observable presentation state in the ViewModel, and let the
+View invoke ViewModel commands and bind widgets to that state. Move a domain
+object to `src/domain/` only when multiple pages actually share it. The View
+must not mutate Model objects directly.
+
+For applications with multiple page levels, add `src/app_router.cpp/.hpp` for
+the page enum, navigation, and back-stack rules. The lifecycle in `app.cpp`
+owns the router and selects the corresponding page View; page Views must not
+own global navigation state.
+
+Use `lilygo_ui_font_get()` for all LVGL text.

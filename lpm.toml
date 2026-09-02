@@ -1,0 +1,51 @@
+schema_version = 1
+
+[project]
+package = "lilygo-ui-template"
+version = "0.1.1"
+app_id = "cc.lilygo.ui.Template"
+title = "Template"
+summary = "A starter template for LILYGO UI applications"
+description = "A responsive application template demonstrating the recommended LILYGO UI project structure."
+license = "MIT"
+source_repo = "https://github.com/LILYGO-UI/template"
+homepage = "https://github.com/LILYGO-UI/template"
+categories = ["Development"]
+
+[[project.authors]]
+name = "lbuque"
+email = "110239031@qq.com"
+
+[project.assets]
+icon = "assets/app-icon.png"
+
+[[project.assets.screenshots]]
+path = "assets/previews/preview1.png"
+caption = "Main application screen"
+
+[[project.permissions]]
+id = "network"
+reason = "Access online application data"
+
+[[project.permissions]]
+id = "filesystem"
+access = "read-write"
+scope = "app-data"
+reason = "Store application settings"
+
+[project.compatibility]
+architectures = ["arm64"]
+min_appkit_version = "0.1.0"
+
+[project.launcher]
+order = 90
+
+[build]
+host_preset = "host-simulator"
+cross_preset = "cm0-cross"
+package_dir = "dist"
+
+[deploy]
+host = "192.168.8.114"
+user = "pi"
+port = 22
