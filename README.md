@@ -82,6 +82,10 @@ git submodule update --init --recursive
 
 The presets select this source SDK with `LilyGoUI_DIR`. Its package config
 builds AppKit and LVGL as static libraries and links them into each application.
+The top-level CMake project sets `LV_DEF_REFR_PERIOD=20` before loading the SDK,
+so LVGL display refresh and animation timers default to 20 ms for the 50 Hz panel.
+This applies to both host and device builds and does not change panel scanout timing
+or independent media and sensor sampling rates.
 Updating AppKit code requires updating the submodule revision and rebuilding
 the application. A local SDK checkout can be selected explicitly:
 
