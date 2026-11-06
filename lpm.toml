@@ -2,7 +2,7 @@ schema_version = 1
 
 [project]
 package = "lilygo-ui-template"
-version = "0.1.1"
+version = "0.1.2"
 app_id = "cc.lilygo.ui.Template"
 title = "Template"
 summary = "A starter template for LILYGO UI applications"
