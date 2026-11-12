@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <cstdlib>
 #include <fstream>
 #include <string>
@@ -21,14 +22,29 @@ int display_width = 0;
 
 void flush_display(lv_display_t *display, const lv_area_t *area, std::uint8_t *pixels)
 {
-    const int width    = area->x2 - area->x1 + 1;
-    const auto *source = reinterpret_cast<const lv_color32_t *>(pixels);
+    const int width   = area->x2 - area->x1 + 1;
+    const auto format = lv_display_get_color_format(display);
+    const auto stride = lv_draw_buf_width_to_stride(width, format);
+    assert(format == LV_COLOR_FORMAT_RGB565 || format == LV_COLOR_FORMAT_XRGB8888 ||
+           format == LV_COLOR_FORMAT_ARGB8888);
 
     for (int y = area->y1; y <= area->y2; ++y) {
-        const auto source_offset = static_cast<std::size_t>(y - area->y1) * static_cast<std::size_t>(width);
+        const auto *source = pixels + static_cast<std::size_t>(y - area->y1) * stride;
         const auto destination_offset =
             static_cast<std::size_t>(y) * static_cast<std::size_t>(display_width) + static_cast<std::size_t>(area->x1);
-        std::copy_n(source + source_offset, width, framebuffer.begin() + destination_offset);
+        auto *destination = framebuffer.data() + destination_offset;
+        if (format == LV_COLOR_FORMAT_RGB565) {
+            for (int x = 0; x < width; ++x) {
+                std::uint16_t packed;
+                std::memcpy(&packed, source + x * 2, sizeof(packed));
+                destination[x].red   = (((packed >> 11) & 31U) * 255U + 15U) / 31U;
+                destination[x].green = (((packed >> 5) & 63U) * 255U + 31U) / 63U;
+                destination[x].blue  = ((packed & 31U) * 255U + 15U) / 31U;
+                destination[x].alpha = 255;
+            }
+        } else {
+            std::memcpy(destination, source, width * sizeof(*destination));
+        }
     }
     lv_display_flush_ready(display);
 }
